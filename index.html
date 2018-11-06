@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>Pizzeria locator</title>
+    <link rel='stylesheet' type='text/css' href='sdk/map.css' />
+    <link rel="stylesheet" href="http://code.jquery.com/ui/1.12.1/themes/base/jquery-ui.css">
+    <script src='sdk/tomtom.min.js'></script>
+    <script type="text/javascript" src='stores.js'></script>
+    <link rel='stylesheet' type='text/css' href='styles.css' />
+    <script src="https://code.jquery.com/jquery-1.12.4.js"></script>
+    <script src="https://code.jquery.com/ui/1.12.1/jquery-ui.js"></script>
+</head>
+
+<body>
+
+    <div class='control-panel'>
+        <div class='heading'>
+            <img src="img/logo.png">
+        </div>
+        <div id='store-list'></div>
+    </div>
+    <div id='map' class='map'></div>
+
+    <script>
+        var map = tomtom.L.map('map', {
+            key: '<your-api-key>',
+            basePath: 'sdk',
+            center: [52.138950, 4.573040],
+            zoom: 10
+        });
+
+        var list = document.getElementById('store-list');
+        var featureGroups = [];
+
+        stores.features.forEach(function (store) {
+            var address = store.properties.address;
+            var location = store.geometry.coordinates;
+            var marker = tomtom.L.marker(location);
+            var city = store.properties.city;
+            var cityStoresList = document.getElementById(city);
+            marker.bindPopup(address)
+
+            if (cityStoresList === null) {
+
+                var cityStoresListHeading = list.appendChild(document.createElement('h3'));
+                cityStoresListHeading.innerHTML = city;
+
+                cityStoresList = list.appendChild(document.createElement('div'));
+                cityStoresList.id = city;
+                cityStoresList.className = 'list-entries-container';
+                featureGroups[city] = new L.featureGroup([marker]);
+
+                cityStoresListHeading.addEventListener('click', function (e) {
+                    map.fitBounds(featureGroups[city].getBounds());
+                });
+            } else {
+                featureGroups[city].addLayer(marker);
+            }
+            marker.addTo(map);
+
+            var details = buildLocation(cityStoresList, address);
+
+            marker.addEventListener('click',
+                (function (details, city) {
+                    var activeItem = document.getElementsByClassName('selected');
+                    return function () {
+                        if (activeItem[0]) {
+                            activeItem[0].classList.remove('selected');
+                        }
+                        details.classList.add('selected');
+                        openCityTab(city);
+                    }
+                })(details, city)
+            );
+
+            details.addEventListener('click',
+                (function (marker) {
+                    var activeItem = document.getElementsByClassName('selected');
+                    return function () {
+                        if (activeItem[0]) {
+                            activeItem[0].classList.remove('selected');
+                        }
+                        map.setView(marker.getLatLng(), 18);
+                        marker.openPopup();
+                    }
+                })(marker)
+            );
+
+            function buildLocation(htmlParent, text) {
+                var details = htmlParent.appendChild(document.createElement('a'));
+                details.href = '#';
+                details.className = 'list-entry';
+                details.innerHTML = text;
+                return details;
+            };
+
+            function openCityTab(selected_id) {
+                var index = $('#store-list').find('div.list-entries-container');
+                for (var j = 0; j < index.length; j++) {
+                    if (index[j].id == selected_id) {
+                        $("#store-list").accordion("option", {
+                            "active": j
+                        });
+                    }
+                }
+            }
+        });
+
+        $(function () {
+            $("#store-list").accordion({
+                "icons": {
+                    "header": "ui-icon-plus",
+                    "activeHeader": "ui-icon-minus"
+                },
+                "heightStyle": "content",
+                "collapsible": true,
+                "active": false
+            });
+        });
+    </script>
+</body>
+
+</html>
