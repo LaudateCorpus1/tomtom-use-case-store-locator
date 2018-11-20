@@ -81,6 +81,7 @@
                         if (activeItem[0]) {
                             activeItem[0].classList.remove('selected');
                         }
+                        details.classList.add('selected');
                         map.setView(marker.getLatLng(), 18);
                         marker.openPopup();
                     }
