@@ -1,125 +1,138 @@
 <!DOCTYPE html>
 <html>
-
 <head>
     <title>Pizzeria locator</title>
-    <link rel='stylesheet' type='text/css' href='sdk/map.css' />
-    <link rel="stylesheet" href="http://code.jquery.com/ui/1.12.1/themes/base/jquery-ui.css">
-    <script src='sdk/tomtom.min.js'></script>
-    <script type="text/javascript" src='stores.js'></script>
-    <link rel='stylesheet' type='text/css' href='styles.css' />
+    <link href='https://api.tomtom.com/maps-sdk-for-web/cdn/5.x/5.40.1/maps/maps.css' rel='stylesheet' type='text/css'>
+    <script src="https://api.tomtom.com/maps-sdk-for-web/cdn/5.x/5.40.1/maps/maps-web.min.js"></script>
+    <script src="https://api.tomtom.com/maps-sdk-for-web/cdn/5.x/5.40.1/services/services-web.min.js"></script>
+    <link href="http://code.jquery.com/ui/1.12.1/themes/base/jquery-ui.css" rel="stylesheet">
+    <script src='stores.js' type="text/javascript"></script>
+    <link href='styles.css' rel='stylesheet' type='text/css'/>
     <script src="https://code.jquery.com/jquery-1.12.4.js"></script>
     <script src="https://code.jquery.com/ui/1.12.1/jquery-ui.js"></script>
 </head>
-
 <body>
-
-    <div class='control-panel'>
-        <div class='heading'>
-            <img src="img/logo.png">
-        </div>
-        <div id='store-list'></div>
+<div class='control-panel'>
+    <div class='heading'>
+        <img src="img/logo.png">
     </div>
-    <div id='map' class='map'></div>
+    <div id='store-list'></div>
+</div>
+<div class='map' id='map'></div>
+<script>
+    const apiKey = 'YOUR_API_KEY';
+    const map = tt.map({
+        key: apiKey,
+        container: 'map',
+        center: [4.573040, 52.138950],
+        style: 'tomtom://vector/1/basic-main',
+        zoom: 9
+    });
 
-    <script>
-        var map = tomtom.L.map('map', {
-            key: '<your-api-key>',
-            basePath: 'sdk',
-            center: [52.138950, 4.573040],
-            zoom: 10
-        });
+    const markersCity = [];
+    const list = document.getElementById('store-list');
 
-        var list = document.getElementById('store-list');
-        var featureGroups = [];
+    stores.features.forEach(function (store, index) {
+        const city = store.properties.city;
+        const address = store.properties.address;
+        const location = store.geometry.coordinates;
+        const marker = new tt.Marker({}).setLngLat(location).setPopup(new tt.Popup({offset: 35}).setHTML(address)).addTo(map);
+        markersCity[index] = {marker, city};
 
-        stores.features.forEach(function (store) {
-            var address = store.properties.address;
-            var location = store.geometry.coordinates;
-            var marker = tomtom.L.marker(location);
-            var city = store.properties.city;
-            var cityStoresList = document.getElementById(city);
-            marker.bindPopup(address)
+        let cityStoresList = document.getElementById(city);
+        if (cityStoresList === null) {
+            const cityStoresListHeading = list.appendChild(document.createElement('h3'));
+            cityStoresListHeading.innerHTML = city;
+            cityStoresList = list.appendChild(document.createElement('div'));
+            cityStoresList.id = city;
+            cityStoresList.className = 'list-entries-container';
+            cityStoresListHeading.addEventListener('click', function (e) {
+                map.fitBounds(getMarkersBoundsForCity(e.target.innerText), {padding: 50});
+            });
+        }
 
-            if (cityStoresList === null) {
+        const details = buildLocation(cityStoresList, address);
 
-                var cityStoresListHeading = list.appendChild(document.createElement('h3'));
-                cityStoresListHeading.innerHTML = city;
-
-                cityStoresList = list.appendChild(document.createElement('div'));
-                cityStoresList.id = city;
-                cityStoresList.className = 'list-entries-container';
-                featureGroups[city] = new L.featureGroup([marker]);
-
-                cityStoresListHeading.addEventListener('click', function (e) {
-                    map.fitBounds(featureGroups[city].getBounds());
-                });
-            } else {
-                featureGroups[city].addLayer(marker);
-            }
-            marker.addTo(map);
-
-            var details = buildLocation(cityStoresList, address);
-
-            marker.addEventListener('click',
-                (function (details, city) {
-                    var activeItem = document.getElementsByClassName('selected');
-                    return function () {
-                        if (activeItem[0]) {
-                            activeItem[0].classList.remove('selected');
-                        }
-                        details.classList.add('selected');
-                        openCityTab(city);
+        marker._element.addEventListener('click',
+            (function (details, city) {
+                const activeItem = document.getElementsByClassName('selected');
+                return function () {
+                    if (activeItem[0]) {
+                        activeItem[0].classList.remove('selected');
                     }
-                })(details, city)
-            );
+                    details.classList.add('selected');
+                    openCityTab(city);
+                }
+            })(details, city, marker.getLngLat())
+        );
 
-            details.addEventListener('click',
-                (function (marker) {
-                    var activeItem = document.getElementsByClassName('selected');
-                    return function () {
-                        if (activeItem[0]) {
-                            activeItem[0].classList.remove('selected');
-                        }
-                        details.classList.add('selected');
-                        map.setView(marker.getLatLng(), 18);
-                        marker.openPopup();
+        details.addEventListener('click',
+            (function (marker) {
+                const activeItem = document.getElementsByClassName('selected');
+                return function () {
+                    if (activeItem[0]) {
+                        activeItem[0].classList.remove('selected');
                     }
-                })(marker)
-            );
+                    details.classList.add('selected');
+                    map.easeTo({
+                        center: marker.getLngLat(),
+                        zoom: 18
+                    });
+                    closeAllPopups();
+                    marker.togglePopup();
+                }
+            })(marker)
+        );
 
-            function buildLocation(htmlParent, text) {
-                var details = htmlParent.appendChild(document.createElement('a'));
-                details.href = '#';
-                details.className = 'list-entry';
-                details.innerHTML = text;
-                return details;
-            };
+        function buildLocation(htmlParent, text) {
+            const details = htmlParent.appendChild(document.createElement('a'));
+            details.href = '#';
+            details.className = 'list-entry';
+            details.innerHTML = text;
+            return details;
+        }
 
-            function openCityTab(selected_id) {
-                var index = $('#store-list').find('div.list-entries-container');
-                for (var j = 0; j < index.length; j++) {
-                    if (index[j].id == selected_id) {
-                        $("#store-list").accordion("option", {
-                            "active": j
-                        });
-                    }
+        function closeAllPopups() {
+            markersCity.forEach(m => {
+                if (m.marker.getPopup().isOpen()) {
+                    m.marker.togglePopup();
+                }
+            });
+        }
+
+        function getMarkersBoundsForCity(city) {
+            const bounds = new tt.LngLatBounds();
+            markersCity.forEach(m => {
+                if (m.city === city) {
+                    bounds.extend(m.marker.getLngLat());
+                }
+            });
+            return bounds;
+        }
+
+        function openCityTab(selected_id) {
+            const index = $('#store-list').find('div.list-entries-container');
+            for (let j = 0; j < index.length; j++) {
+                if (index[j].id === selected_id) {
+                    $("#store-list").accordion("option", {
+                        "active": j
+                    });
                 }
             }
-        });
+        }
+    });
 
-        $(function () {
-            $("#store-list").accordion({
-                "icons": {
-                    "header": "ui-icon-plus",
-                    "activeHeader": "ui-icon-minus"
-                },
-                "heightStyle": "content",
-                "collapsible": true,
-                "active": false
-            });
+    $(function () {
+        $("#store-list").accordion({
+            "icons": {
+                "header": "ui-icon-plus",
+                "activeHeader": "ui-icon-minus"
+            },
+            "heightStyle": "content",
+            "collapsible": true,
+            "active": false
         });
-    </script>
+    });
+</script>
 </body>
-
 </html>
