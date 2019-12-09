@@ -4,7 +4,6 @@
     <title>Pizzeria locator</title>
     <link href='https://api.tomtom.com/maps-sdk-for-web/cdn/5.x/5.40.1/maps/maps.css' rel='stylesheet' type='text/css'>
     <script src='https://api.tomtom.com/maps-sdk-for-web/cdn/5.x/5.40.1/maps/maps-web.min.js'></script>
-    <script src='https://api.tomtom.com/maps-sdk-for-web/cdn/5.x/5.40.1/services/services-web.min.js'></script>
     <link href='https://code.jquery.com/ui/1.12.1/themes/base/jquery-ui.css' rel='stylesheet'>
     <script src='stores.js' type='text/javascript'></script>
     <link href='styles.css' rel='stylesheet' type='text/css'/>
@@ -36,7 +35,7 @@
         const city = store.properties.city;
         const address = store.properties.address;
         const location = store.geometry.coordinates;
-        const marker = new tt.Marker({}).setLngLat(location).setPopup(new tt.Popup({offset: 35}).setHTML(address)).addTo(map);
+        const marker = new tt.Marker().setLngLat(location).setPopup(new tt.Popup({offset: 35}).setHTML(address)).addTo(map);
         markersCity[index] = {marker, city};
 
         let cityStoresList = document.getElementById(city);
@@ -54,7 +53,7 @@
         const details = buildLocation(cityStoresList, address);
 
         marker._element.addEventListener('click',
-            (function (details, city) {
+            (function (city) {
                 const activeItem = document.getElementsByClassName('selected');
                 return function () {
                     if (activeItem[0]) {
@@ -63,7 +62,7 @@
                     details.classList.add('selected');
                     openCityTab(city);
                 }
-            })(details, city)
+            })(city)
         );
 
         details.addEventListener('click',
@@ -93,29 +92,29 @@
         }
 
         function closeAllPopups() {
-            markersCity.forEach(m => {
-                if (m.marker.getPopup().isOpen()) {
-                    m.marker.togglePopup();
+            markersCity.forEach(markerCity => {
+                if (markerCity.marker.getPopup().isOpen()) {
+                    markerCity.marker.togglePopup();
                 }
             });
         }
 
         function getMarkersBoundsForCity(city) {
             const bounds = new tt.LngLatBounds();
-            markersCity.forEach(m => {
-                if (m.city === city) {
-                    bounds.extend(m.marker.getLngLat());
+            markersCity.forEach(markerCity => {
+                if (markerCity.city === city) {
+                    bounds.extend(markerCity.marker.getLngLat());
                 }
             });
             return bounds;
         }
 
         function openCityTab(selected_id) {
-            const store_list = $('#store-list');
-            const index = store_list.find('div.list-entries-container');
+            const storeListElement = $('#store-list');
+            const index = storeListElement.find('div.list-entries-container');
             for (let j = 0; j < index.length; j++) {
                 if (index[j].id === selected_id) {
-                    store_list.accordion('option', {
+                    storeListElement.accordion('option', {
                         'active': j
                     });
                 }
