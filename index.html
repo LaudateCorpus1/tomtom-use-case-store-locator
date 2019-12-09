@@ -52,7 +52,7 @@
 
         const details = buildLocation(cityStoresList, address);
 
-        marker._element.addEventListener('click',
+        marker.getElement().addEventListener('click',
             (function (city) {
                 const activeItem = document.getElementsByClassName('selected');
                 return function () {
